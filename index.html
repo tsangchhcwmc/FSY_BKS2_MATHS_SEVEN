@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>七巧板遊戲 - 帶重置按鈕</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background-color: #f0f0f0;
+    }
+    .game-container {
+      position: relative;
+      width: 600px;
+      height: 600px;
+      background-color: #ffffff;
+      border: 2px solid #000;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+    .piece {
+      position: absolute;
+      cursor: grab;
+      transform-origin: center;
+    }
+    .piece:hover {
+      opacity: 0.8;
+    }
+    .triangle {
+      width: 0;
+      height: 0;
+      border-style: solid;
+    }
+    .large-triangle {
+      border-width: 200px 200px 0 0;
+      border-color: #ff6f61 transparent transparent transparent;
+    }
+    .medium-triangle {
+      border-width: 141px 141px 0 0;
+      border-color: #6ec6ff transparent transparent transparent;
+    }
+    .small-triangle {
+      border-width: 100px 100px 0 0;
+      border-color: #ffd54f transparent transparent transparent;
+    }
+    .square {
+      width: 141px;
+      height: 141px;
+      background-color: #8bc34a;
+    }
+    .parallelogram {
+      width: 200px;
+      height: 100px;
+      background-color: #ab47bc;
+      transform: skew(30deg);
+    }
+    .reset-button {
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: #007bff;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .reset-button:hover {
+      background-color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+
+<!-- 重置按钮 -->
+<button class="reset-button">重置</button>
+
+<!-- 七巧板容器 -->
+<div class="game-container">
+  <!-- 大三角形 1 -->
+  <div class="piece triangle large-triangle" data-id="large-triangle-1"></div>
+  <!-- 大三角形 2 -->
+  <div class="piece triangle large-triangle" data-id="large-triangle-2"></div>
+  <!-- 中三角形 -->
+  <div class="piece triangle medium-triangle" data-id="medium-triangle"></div>
+  <!-- 小三角形 1 -->
+  <div class="piece triangle small-triangle" data-id="small-triangle-1"></div>
+  <!-- 小三角形 2 -->
+  <div class="piece triangle small-triangle" data-id="small-triangle-2"></div>
+  <!-- 正方形 -->
+  <div class="piece square" data-id="square"></div>
+  <!-- 平行四邊形 -->
+  <div class="piece parallelogram" data-id="parallelogram"></div>
+</div>
+
+<script>
+  const pieces = document.querySelectorAll('.piece');
+  const rotationAngles = new Map(); // 存储每个形状的旋转角度
+  let selectedPiece = null; // 当前被拖动的形状
+  let isDragging = false; // 是否正在拖动
+  let offsetX = 0; // 鼠标与形状左边距的偏移
+  let offsetY = 0; // 鼠标与形状顶部的偏移
+  let clickTimer = null; // 用于区分单击和拖动
+
+  // 初始状态配置
+  const initialState = {
+    'large-triangle-1': { top: '0px', left: '0px', rotate: 0 },
+    'large-triangle-2': { top: '0px', left: '200px', rotate: 90 },
+    'medium-triangle': { top: '200px', left: '200px', rotate: 45 },
+    'small-triangle-1': { top: '200px', left: '0px', rotate: 0 },
+    'small-triangle-2': { top: '300px', left: '100px', rotate: -90 },
+    'square': { top: '200px', left: '100px', rotate: 0 },
+    'parallelogram': { top: '300px', left: '200px', rotate: 90 },
+  };
+
+  // 初始化每个形状的旋转角度为 0 并设置初始位置
+  function resetPieces() {
+    pieces.forEach(piece => {
+      const id = piece.getAttribute('data-id');
+      const state = initialState[id];
+      piece.style.top = state.top;
+      piece.style.left = state.left;
+      piece.style.transform = `rotate(${state.rotate}deg)`;
+      rotationAngles.set(piece, state.rotate);
+    });
+  }
+
+  resetPieces(); // 初始化形状为正方形排列
+
+  // 鼠标按下事件
+  pieces.forEach(piece => {
+    piece.addEventListener('mousedown', (e) => {
+      e.preventDefault(); // 阻止默认行为
+      if (e.button === 0) { // 左键按下
+        selectedPiece = piece;
+        offsetX = e.clientX - piece.offsetLeft;
+        offsetY = e.clientY - piece.offsetTop;
+
+        // 设置延时器，区分单击和拖动
+        clickTimer = setTimeout(() => {
+          isDragging = true; // 如果按住超过 200ms，进入拖动模式
+          piece.style.cursor = 'grabbing';
+        }, 200);
+      }
+    });
+
+    // 鼠标移动事件（拖动）
+    document.addEventListener('mousemove', (e) => {
+      if (isDragging && selectedPiece) {
+        selectedPiece.style.left = `${e.clientX - offsetX}px`;
+        selectedPiece.style.top = `${e.clientY - offsetY}px`;
+      }
+    });
+
+    // 鼠标松开事件
+    document.addEventListener('mouseup', (e) => {
+      if (clickTimer) {
+        clearTimeout(clickTimer); // 清除延时器
+        clickTimer = null;
+      }
+
+      if (isDragging && selectedPiece) {
+        isDragging = false; // 停止拖动
+        selectedPiece.style.cursor = 'grab';
+      } else if (selectedPiece) {
+        // 如果没有拖动，则判断为单击，执行旋转
+        let currentAngle = rotationAngles.get(selectedPiece) || 0;
+        currentAngle = (currentAngle + 45) % 360; // 每次旋转 45 度
+        rotationAngles.set(selectedPiece, currentAngle);
+        selectedPiece.style.transform = `rotate(${currentAngle}deg)`;
+      }
+
+      selectedPiece = null; // 清除选中状态
+    });
+  });
+
+  // 禁用右键菜单
+  document.addEventListener('contextmenu', (e) => e.preventDefault());
+
+  // 重置按钮点击事件
+  document.querySelector('.reset-button').addEventListener('click', () => {
+    resetPieces();
+  });
+</script>
+
+</body>
+</html>
